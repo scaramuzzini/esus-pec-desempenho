@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "Se você usar este material, cite-o assim:"
+title: "esus-pec-desempenho: índices, configuração do PostgreSQL e diagnóstico de desempenho para o e-SUS APS PEC"
+authors:
+  - family-names: Torres
+    given-names: Mario
+    orcid: "https://orcid.org/0000-0002-2050-7648"
+repository-code: "https://github.com/scaramuzzini/esus-pec-desempenho"
+license:
+  - Apache-2.0
+  - CC-BY-4.0
+date-released: 2026-11-10
+keywords:
+  - e-SUS APS
+  - PEC
+  - PostgreSQL
+  - desempenho
+  - atenção primária
+  - SUS

@@ -1,0 +1,9 @@
+esus-pec-desempenho
+Copyright 2026 Mario Torres
+
+Índices, configuração do PostgreSQL e diagnóstico de desempenho para o e-SUS APS PEC.
+https://github.com/scaramuzzini/esus-pec-desempenho
+
+O código SQL (sql/) é licenciado sob a Apache License 2.0 (arquivo LICENSE).
+A documentação (README.md e docs/) é licenciada sob a Creative Commons
+Atribuição 4.0 Internacional (arquivo LICENSE-CC-BY-4.0).

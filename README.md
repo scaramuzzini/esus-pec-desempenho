@@ -1,6 +1,6 @@
 # esus-pec-desempenho
 
-> **English:** Performance fixes for the PostgreSQL database behind Brazil's e-SUS APS PEC (the Ministry of Health's primary-care EHR). The repo has four indexes, planner settings, diagnostic queries and write-ups of three SQL defects. All of it was measured in production on a large municipality. The documentation is in Portuguese.
+> **English:** Performance fixes for the PostgreSQL database behind Brazil's e-SUS APS PEC (the Ministry of Health's primary-care EHR). The repo has five indexes, planner settings, diagnostic queries and write-ups of three SQL defects. All of it was measured in production on a large municipality. The documentation is in Portuguese.
 
 Índices, configurações do PostgreSQL e consultas de diagnóstico para o **e-SUS APS PEC** quando ele fica lento em bases grandes. Tudo foi medido em produção, num município de grande porte.
 
@@ -26,7 +26,7 @@ Em bases menores, o ganho tende a ser menor. **Meça antes de aplicar** (veja [C
 | 2 | Envio pendente para a RNDS (`tb_envio_rnds`) | índice | 2–13 min | 0,2 ms |
 | 3 | Cadastro individual com erro de inativação (`tb_cds_cad_individual`) | índice | 23–70 s | 0,09 ms |
 | 4 | Cidadão pela última ficha (`tb_cidadao.co_unico_ultima_ficha`), a cada FCI processada | índice parcial | cerca de 1 s, 3,5 GB lidos | menos de 0,1 ms |
-| 5 | Busca de cidadão pelo nome da mãe (`LIKE '%…%'`) | índice GIN trigram | cerca de 3,1 s | cerca de 40 ms |
+| 5 | Busca de cidadão pelo nome da mãe (`LIKE '%…%'`) | índice GIN trigram **e** btree (os dois juntos, veja abaixo) | cerca de 3,1 s | cerca de 40 ms |
 | 6 | Núcleo familiar e família por CPF/CNS do responsável | **defeito no SQL do PEC** ([relato](docs/defeitos-sql.md#1-e-2-núcleo-familiar-e-família-por-cpfcns-do-responsável)) | 9–24 min, "too many clients" | 0,5–0,6 ms com a correção |
 | 7 | ETL "Cidadãos vinculados" | **defeito no SQL do PEC** ([relato](docs/defeitos-sql.md#3-etl-cidadãos-vinculados)) | 44–65 h, fila de fichas parada | 4 min com a correção |
 
@@ -36,12 +36,14 @@ Em bases menores, o ganho tende a ser menor. **Meça antes de aplicar** (veja [C
 SELECT indexdef FROM pg_indexes WHERE indexname = 'in_envrnds_necenvio_coseq';
 ```
 
+**O índice do nome da mãe (item 5) não pode ir sozinho.** Só com o GIN, a exportação de "possíveis duplicatas" (Unificação de prontuários) passa a usá-lo para comparar nomes exatos, a cerca de 0,4 s por cadastro. Na base testada ela rodou mais de 2 horas sem terminar. Com um btree na mesma coluna, terminou em cerca de 2,5 minutos. Os dois estão em [sql/02-indices.sql](sql/02-indices.sql).
+
 ## Arquivos
 
 | Arquivo | Conteúdo |
 |---|---|
 | [sql/01-diagnostico.sql](sql/01-diagnostico.sql) | Consultas mais caras, sessões longas, bloqueios, `idle in transaction`, fila de fichas e etapas da rodada noturna |
-| [sql/02-indices.sql](sql/02-indices.sql) | Os 4 índices, cada um com a consulta que ele atende e uma verificação prévia |
+| [sql/02-indices.sql](sql/02-indices.sql) | Os 5 índices, cada um com a consulta que ele atende e uma verificação prévia |
 | [sql/03-reverter-indices.sql](sql/03-reverter-indices.sql) | Remove os índices |
 | [sql/04-configuracao.sql](sql/04-configuracao.sql) | Parâmetros do planejador e de operação |
 | [docs/defeitos-sql.md](docs/defeitos-sql.md) | Os 3 defeitos de SQL do PEC: sintoma, causa, plano e correção proposta |

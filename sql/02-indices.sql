@@ -59,12 +59,20 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS in_cidadao_counicoultficha_perf
 
 
 -- ---------------------------------------------------------------------------
--- 4. Busca de cidadão pelo nome da mãe
+-- 4. Busca de cidadão pelo nome da mãe (dois índices: crie os dois juntos)
 --    Consulta-alvo: ... where no_mae_filtro like '%texto%'
 --    O PEC já tem índice trigram para o nome do cidadão, mas não para o nome da mãe.
 --    Requer a extensão pg_trgm (o PEC já a usa).
 --    Antes: ~3,1 s (máx. 39 s) | Depois: ~40 ms | Tamanho: ~214 MB | Criação: ~73 s
 --    É o índice mais pesado para escrita. Crie só se essa busca aparecer como lenta.
+--
+--    ATENÇÃO: o índice GIN sozinho quebra a exportação de duplicados.
+--    A tela "Unificação de prontuários > Exportar possíveis duplicatas" compara
+--    no_mae_filtro por igualdade, cadastro a cadastro. Sem índice btree nessa coluna,
+--    o PostgreSQL passa a usar o GIN também para a igualdade (~0,4 s por busca). Na base
+--    testada eram ~1,75 milhão de buscas: a exportação rodou mais de 2 h sem terminar.
+--    Com o btree abaixo, a igualdade cai para ~0,02 ms e a exportação terminou em
+--    ~2,5 min. A busca parcial continua usando o GIN.
 -- ---------------------------------------------------------------------------
 
 -- Verificação
@@ -72,8 +80,16 @@ SELECT extname FROM pg_extension WHERE extname = 'pg_trgm';
 SELECT count(*) AS execucoes, round(mean_exec_time) AS ms_media
 FROM pg_stat_statements WHERE query ILIKE '%no_mae_filtro%';
 
+-- 4a. btree para comparação exata (crie primeiro). Tamanho: ~99 MB | Criação: ~22 s
+CREATE INDEX CONCURRENTLY IF NOT EXISTS in_cidadao_nomaefiltro_perf
+    ON tb_cidadao (no_mae_filtro);
+
+-- 4b. GIN trigram para a busca parcial
 CREATE INDEX CONCURRENTLY IF NOT EXISTS in_cidadao_nomaefiltrogin_perf
     ON tb_cidadao USING gin (no_mae_filtro gin_trgm_ops);
+
+-- Confira que a igualdade usa o btree (deve aparecer in_cidadao_nomaefiltro_perf):
+-- EXPLAIN SELECT 1 FROM tb_cidadao WHERE no_mae_filtro = 'QUALQUER NOME';
 
 
 -- ---------------------------------------------------------------------------
